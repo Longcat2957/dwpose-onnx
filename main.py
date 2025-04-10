@@ -13,6 +13,7 @@ REPO_ID = "Longcat2957/dwpose-onnx"
 
 eps = 0.01
 
+
 def draw_bodypose(canvas, candidate, subset):
     H, W, C = canvas.shape
     candidate = np.array(candidate)
@@ -74,7 +75,9 @@ def draw_bodypose(canvas, candidate, subset):
             mY = np.mean(Y)
             length = ((X[0] - X[1]) ** 2 + (Y[0] - Y[1]) ** 2) ** 0.5
             angle = math.degrees(math.atan2(X[0] - X[1], Y[0] - Y[1]))
-            polygon = cv2.ellipse2Poly((int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1)
+            polygon = cv2.ellipse2Poly(
+                (int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1
+            )
             cv2.fillConvexPoly(canvas, polygon, colors[i])
 
     canvas = (canvas * 0.6).astype(np.uint8)
@@ -138,7 +141,8 @@ def draw_handpose(canvas, all_hand_peaks):
                     canvas,
                     (x1, y1),
                     (x2, y2),
-                    matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0]) * 255,
+                    matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0])
+                    * 255,
                     thickness=2,
                 )
 
@@ -165,7 +169,9 @@ def draw_facepose(canvas, all_lmks):
     return canvas
 
 
-def draw_pose(pose, height: int, width: int, include_face: bool = True, include_hands: bool = True) -> np.ndarray:
+def draw_pose(
+    pose, height: int, width: int, include_face: bool = True, include_hands: bool = True
+) -> np.ndarray:
     canvas = np.zeros(shape=(height, width, 3), dtype=np.uint8)
 
     candidate = pose["bodies"]
@@ -497,8 +503,8 @@ def decode(
 
 class DWposeDetector:
     """DWposeDetector is a wrapper class that performs:
-       1) Object detection using YOLOX
-       2) Pose estimation using DWpose
+    1) Object detection using YOLOX
+    2) Pose estimation using DWpose
     """
 
     def __init__(self, device: str = "cuda", verbose: bool = False) -> None:
@@ -522,7 +528,9 @@ class DWposeDetector:
 
         # Download ONNX models from Hugging Face Hub
         self.det_model_path = hf_hub_download(repo_id=REPO_ID, filename="yolox_l.onnx")
-        self.pose_model_path = hf_hub_download(repo_id=REPO_ID, filename="dw-ll_ucoco_384.onnx")
+        self.pose_model_path = hf_hub_download(
+            repo_id=REPO_ID, filename="dw-ll_ucoco_384.onnx"
+        )
 
         # Configure Inference Sessions
         providers, provider_options = self.check_device(device)
@@ -634,7 +642,9 @@ class DWposeDetector:
                 image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
             elif len(image.shape) == 3 and image.shape[2] != 3:
                 # Convert to RGB then back to BGR as a fallback
-                image = cv2.cvtColor(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), cv2.COLOR_RGB2BGR)
+                image = cv2.cvtColor(
+                    cv2.cvtColor(image, cv2.COLOR_BGR2RGB), cv2.COLOR_RGB2BGR
+                )
 
             return image
         except Exception as e:
@@ -662,9 +672,7 @@ class DWposeDetector:
             - preprocessed_image (np.ndarray): Shape (C, input_shape[0], input_shape[1]).
             - resize_ratio (float): Scale factor used for resizing.
         """
-        padded_image = np.full(
-            (input_shape[0], input_shape[1], 3), 114, dtype=np.uint8
-        )
+        padded_image = np.full((input_shape[0], input_shape[1], 3), 114, dtype=np.uint8)
 
         r = min(input_shape[0] / image.shape[0], input_shape[1] / image.shape[1])
         resized_image = cv2.resize(
@@ -766,9 +774,7 @@ class DWposeDetector:
         boxes_xyxy /= ratio
 
         # NMS
-        detections = multiclass_nms(
-            boxes_xyxy, scores, nms_thr=0.45, score_thr=0.1
-        )
+        detections = multiclass_nms(boxes_xyxy, scores, nms_thr=0.45, score_thr=0.1)
         if detections is not None:
             final_boxes, final_scores, final_cls_inds = (
                 detections[:, :4],
@@ -858,7 +864,9 @@ class DWposeDetector:
             keypoints, scores = decode(simcc_x, simcc_y, simcc_split_ratio)
 
             # Rescale keypoints to original image space
-            keypoints = (keypoints / [w, h]) * scales[i] + (centers[i] - scales[i] / 2.0)
+            keypoints = (keypoints / [w, h]) * scales[i] + (
+                centers[i] - scales[i] / 2.0
+            )
 
             all_keypoints.append(keypoints[0])
             all_scores.append(scores[0])
@@ -887,7 +895,9 @@ class DWposeDetector:
         model_input_size = (pose_w, pose_h)
 
         # Preprocess
-        cropped_images, centers, scales = self.preprocess_pose(image, boxes, model_input_size)
+        cropped_images, centers, scales = self.preprocess_pose(
+            image, boxes, model_input_size
+        )
 
         # Inference for each bounding box
         results = []
@@ -902,7 +912,9 @@ class DWposeDetector:
             results.append(ort_output)
 
         # Postprocess
-        keypoints, scores = self.postprocess_pose(results, model_input_size, centers, scales)
+        keypoints, scores = self.postprocess_pose(
+            results, model_input_size, centers, scales
+        )
         return keypoints, scores
 
     def _format_pose(self, candidates, scores, width, height):
@@ -939,7 +951,9 @@ class DWposeDetector:
 
         return pose
 
-    def __call__(self, input_source: str, output_path: str | None) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(
+        self, input_source: str, output_path: str | None
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Perform detection + pose estimation on a given input image source.
 
         Args:
@@ -956,7 +970,9 @@ class DWposeDetector:
         # 1) Detection
         final_boxes = self.inference_detector(image)
         if final_boxes.size == 0:
-            self.logger.warning("No boxes detected. Will use entire image as a single bbox.")
+            self.logger.warning(
+                "No boxes detected. Will use entire image as a single bbox."
+            )
 
         # 2) Pose Estimation
         keypoints, scores = self.inference_pose(image, final_boxes)
@@ -969,8 +985,7 @@ class DWposeDetector:
         neck = np.mean(keypoints_info[:, [5, 6]], axis=1)
         # Confidence for neck if both shoulders are above 0.3
         neck[:, 2] = np.logical_and(
-            keypoints_info[:, 5, 2] > 0.3,
-            keypoints_info[:, 6, 2] > 0.3
+            keypoints_info[:, 5, 2] > 0.3, keypoints_info[:, 6, 2] > 0.3
         ).astype(float)
 
         # Insert neck at index 17
@@ -990,7 +1005,7 @@ class DWposeDetector:
             final_keypoints, final_scores, image.shape[1], image.shape[0]
         )
         self.logger.info("Inference completed successfully")
-        
+
         # Save the pose data if output path is provided
         if output_path:
             pose_canvas = draw_pose(pose_data, image.shape[0], image.shape[1])
@@ -1000,14 +1015,11 @@ class DWposeDetector:
 
         return pose_data
 
+
 # 사용 예시
 if __name__ == "__main__":
     # DWposeDetector 객체 생성
-    detector = DWposeDetector(device="cuda:0", verbose=True)  # GPU 사용 시 "cuda"로 변경
-    
-    # 이미지 경로
-    image_path = "sample.png"
-    
-    # 포즈 추출
-    pose_data = detector(image_path, output_path="output_555.png")
-    
+
+    detector = DWposeDetector(device="cuda:0", verbose=True)
+    image_path = "7.jpg"
+    pose_data = detector(image_path, output_path="output_6.png")
