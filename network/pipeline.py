@@ -83,11 +83,7 @@ class DWPosePipeline:
             image (np.ndarray): 입력 이미지 (H, W, C) 형식의 BGR 이미지.
 
         Returns:
-            Dict[str, Any]: 객체 감지 및 포즈 추정 결과를 포함하는 딕셔너리.
-                - number_of_people (int): 감지된 사람 수.
-                - boxes (np.ndarray): 감지된 객체의 바운딩 박스 좌표 (N, 4).
-                - keypoints (np.ndarray): 감지된 사람의 키포인트 좌표 (N, 134, 2).
-                - scores (np.ndarray): 감지된 사람의 키포인트 신뢰도 (N, 134).
+
         """
         self.logger.info("객체 감지 및 포즈 추정 시작")
 
@@ -123,28 +119,53 @@ class DWPosePipeline:
         number_of_people = new_keypoints_info.shape[0]
         final_keypoints = new_keypoints_info[..., :2]  # (number_of_people, 134, 2)
         final_scores = new_keypoints_info[..., 2]  # (number_of_people, 134)
-        
+
         # normalize keypoints
         final_keypoints[..., 0] /= float(image.shape[1])
         final_keypoints[..., 1] /= float(image.shape[0])
-        
+
         # body, hand, face로 분리
-        body_keypoints = final_keypoints[:, :18]    # (number_of_people, 18, 2)
-        left_foot_keypoints = final_keypoints[:, 18:21]
-        right_foot_keypoints = final_keypoints[:, 21:24]
+        body_keypoints = final_keypoints[:, :18]  # (number_of_people, 18, 2)
+        left_foot_keypoints = final_keypoints[:, 18:21]  # (number_of_people, 3, 2)
+        right_foot_keypoints = final_keypoints[:, 21:24]  # (number_of_people, 3, 2)
         face_keypoints = final_keypoints[:, 24:92]  # (number_of_people, 68, 2)
-        left_hand_keypoints = final_keypoints[:, 92:113]
-        right_hand_keypoints = final_keypoints[:, 113:]
-        
+        left_hand_keypoints = final_keypoints[:, 92:113]  # (number_of_people, 21, 2)
+        right_hand_keypoints = final_keypoints[:, 113:]  # (number_of_people, 21, 2)
+
+        # 키포인트와 신뢰도 점수 합치기 (x, y, score)
+        body_keypoints_with_scores = np.concatenate(
+            [body_keypoints, final_scores[:, :18, None]], axis=2
+        )  # (number_of_people, 18, 3)
+
+        left_foot_keypoints_with_scores = np.concatenate(
+            [left_foot_keypoints, final_scores[:, 18:21, None]], axis=2
+        )  # (number_of_people, 3, 3)
+
+        right_foot_keypoints_with_scores = np.concatenate(
+            [right_foot_keypoints, final_scores[:, 21:24, None]], axis=2
+        )  # (number_of_people, 3, 3)
+
+        face_keypoints_with_scores = np.concatenate(
+            [face_keypoints, final_scores[:, 24:92, None]], axis=2
+        )  # (number_of_people, 68, 3)
+
+        left_hand_keypoints_with_scores = np.concatenate(
+            [left_hand_keypoints, final_scores[:, 92:113, None]], axis=2
+        )  # (number_of_people, 21, 3)
+
+        right_hand_keypoints_with_scores = np.concatenate(
+            [right_hand_keypoints, final_scores[:, 113:, None]], axis=2
+        )  # (number_of_people, 21, 3)
+
         return {
             "number_of_people": number_of_people,  # int
             "boxes": boxes,  # (number_of_people, 4)
             "keypoints": {
-                "body": body_keypoints,  # (number_of_people, 18, 2)
-                "left_foot": left_foot_keypoints,  # (number_of_people, 3, 2)
-                "right_foot": right_foot_keypoints,  # (number_of_people, 3, 2)
-                "face": face_keypoints,  # (number_of_people, 68, 2)
-                "left_hand": left_hand_keypoints,  # (number_of_people, 21, 2)
-                "right_hand": right_hand_keypoints,  # (number_of_people, 21, 2)
+                "body": body_keypoints_with_scores,  # (number_of_people, 18, 3)
+                "left_foot": left_foot_keypoints_with_scores,  # (number_of_people, 3, 3)
+                "right_foot": right_foot_keypoints_with_scores,  # (number_of_people, 3, 3)
+                "face": face_keypoints_with_scores,  # (number_of_people, 68, 3)
+                "left_hand": left_hand_keypoints_with_scores,  # (number_of_people, 21, 3)
+                "right_hand": right_hand_keypoints_with_scores,  # (number_of_people, 21, 3)
             },
         }
