@@ -2,8 +2,8 @@ import logging
 from typing import Optional, Tuple, Dict, Any
 import numpy as np
 
-from .det import ObjectDetector
-from .pose import PoseEstimator
+from src.network.det import ObjectDetector
+from src.network.pose import PoseEstimator
 
 
 class DWPosePipeline:

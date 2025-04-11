@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from typing import Optional
 
-from network.base import ONNXWrapper
+from src.network.base import ONNXWrapper
 
 
 class ObjectDetector(ONNXWrapper):

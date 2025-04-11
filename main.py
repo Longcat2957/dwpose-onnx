@@ -1,12 +1,12 @@
-from network.pipeline import DWPosePipeline
-from utils.loader import ImageLoader
-from utils.visualize import PoseVisualizer
+from src.network.pipeline import DWPosePipeline
+from src.utils.loader import ImageLoader
+from src.utils.visualize import PoseVisualizer
 
 REPO_ID = "Longcat2957/dwpose-onnx"
 
 if __name__ == "__main__":
     imLoader = ImageLoader(verbose=False)
-    image = imLoader.load("7.jpg")
+    image = imLoader.load("sample.png")
 
     pipeline = DWPosePipeline(
         device="cuda",
@@ -21,4 +21,4 @@ if __name__ == "__main__":
     pv = PoseVisualizer(verbose=False, draw_feet=True)
 
     obj = pv(input_image=image, pose_data=out, format="pil")
-    obj.save("output441.jpg")
+    obj.save("output_pil.jpg")
